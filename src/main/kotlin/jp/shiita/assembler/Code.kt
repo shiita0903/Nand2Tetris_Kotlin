@@ -1,18 +1,18 @@
 package jp.shiita.assembler
 
 object Code {
-    fun comp(mnemonic: String): Short = when (mnemonic) {
+    fun comp(mnemonic: String): Int = when (mnemonic) {
         // a == 0
         "0"   -> 0b0101010
         "1"   -> 0b0111111
         "-1"  -> 0b0111010
         "D"   -> 0b0001100
-        "A"   -> 0b0101100
+        "A"   -> 0b0110000
         "!D"  -> 0b0001101
         "!A"  -> 0b0110001
         "-D"  -> 0b0001111
         "-A"  -> 0b0110011
-        "D+1" -> 0b0111111
+        "D+1" -> 0b0011111
         "A+1" -> 0b0110111
         "D-1" -> 0b0001110
         "A-1" -> 0b0110010
@@ -35,7 +35,7 @@ object Code {
         else  -> error("invalid mnemonic : \"$mnemonic\"")
     }
 
-    fun dest(mnemonic: String): Short {
+    fun dest(mnemonic: String): Int {
         require(mnemonic == "null" || mnemonic.groupBy { it }.keys.all { it in "AMD" }) {
             "invalid mnemonic : \"$mnemonic\""
         }
@@ -44,10 +44,10 @@ object Code {
         if ('A' in mnemonic) ret = ret or (1 shl 2)
         if ('D' in mnemonic) ret = ret or (1 shl 1)
         if ('M' in mnemonic) ret = ret or 1
-        return ret.toShort()
+        return ret
     }
 
-    fun jump(mnemonic: String): Short = when (mnemonic) {
+    fun jump(mnemonic: String): Int = when (mnemonic) {
         "null" -> 0b000
         "JGT"  -> 0b001
         "JEQ"  -> 0b010

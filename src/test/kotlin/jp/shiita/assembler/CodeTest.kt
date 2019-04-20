@@ -12,12 +12,12 @@ object CodeSpec : Spek({
             "1"   to 0b0111111,
             "-1"  to 0b0111010,
             "D"   to 0b0001100,
-            "A"   to 0b0101100,
+            "A"   to 0b0110000,
             "!D"  to 0b0001101,
             "!A"  to 0b0110001,
             "-D"  to 0b0001111,
             "-A"  to 0b0110011,
-            "D+1" to 0b0111111,
+            "D+1" to 0b0011111,
             "A+1" to 0b0110111,
             "D-1" to 0b0001110,
             "A-1" to 0b0110010,
@@ -39,7 +39,7 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected.toShort(), Code.comp(mnemonic)) }
+                it("should return $expected") { assertEquals(expected, Code.comp(mnemonic)) }
             }
         }
 
@@ -70,7 +70,7 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected.toShort(), Code.dest(mnemonic)) }
+                it("should return $expected") { assertEquals(expected, Code.dest(mnemonic)) }
             }
         }
 
@@ -93,7 +93,7 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected.toShort(), Code.jump(mnemonic)) }
+                it("should return $expected") { assertEquals(expected, Code.jump(mnemonic)) }
             }
         }
 
