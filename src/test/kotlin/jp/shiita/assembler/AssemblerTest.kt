@@ -9,7 +9,7 @@ import java.io.FileReader
 object AssemblerSpec : Spek({
     describe("Assembler#assemble(without symbol)") {
         listOf("Add.asm", "MaxL.asm", "PongL.asm", "RectL.asm")
-            .map { it to "src/test/resource/$it" }
+            .map { it to "src/test/resource/assembler/$it" }
             .forEach { (asmFile, asmPath) ->
                 val cmpFile = asmFile.replace(".asm", ".cmp")
                 val hackPath = asmPath.replace(".asm", ".hack")
@@ -31,7 +31,7 @@ object AssemblerSpec : Spek({
 
     describe("Assembler#assemble(with symbol)") {
         listOf("Max.asm", "Pong.asm", "Rect.asm")
-            .map { it to "src/test/resource/$it" }
+            .map { it to "src/test/resource/assembler/$it" }
             .forEach { (asmFile, asmPath) ->
                 val cmpFile = asmFile.replace(".asm", ".cmp")
                 val hackPath = asmPath.replace(".asm", ".hack")

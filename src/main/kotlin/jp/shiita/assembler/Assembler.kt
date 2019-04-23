@@ -38,5 +38,5 @@ class Assembler(private val asmPath: String, private val printInfo: Boolean = fa
     }
 }
 
-fun main(args: Array<String>) = Assembler("src/main/resource/${args[0]}", true).assemble()
+fun main(args: Array<String>) = Assembler("src/main/resource/assembler/${args[0]}", true).assemble()
 
