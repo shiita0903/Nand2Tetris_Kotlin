@@ -6,12 +6,17 @@ import java.io.StreamTokenizer
 
 class Parser(private val path: String, printSymbolTable: Boolean = false) : Closeable {
     lateinit var commandType: CommandType
+        private set
     val hasMoreCommands: Boolean
         get() = tokenizer.ttype != StreamTokenizer.TT_EOF
     var symbol: Int = 0
+        private set
     var dest: String? = null
+        private set
     var comp: String? = null
+        private set
     var jump: String? = null
+        private set
 
     private var reader: FileReader? = null
     private lateinit var tokenizer: StreamTokenizer
