@@ -3,8 +3,10 @@ package jp.shiita.assembler
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.spekframework.spek2.Spek
 import org.spekframework.spek2.style.specification.describe
+import java.io.BufferedWriter
 import java.io.File
 import java.io.FileReader
+import java.io.FileWriter
 
 object AssemblerSpec : Spek({
     describe("Assembler#assemble(without symbol)") {
@@ -16,7 +18,11 @@ object AssemblerSpec : Spek({
                 val cmpPath = asmPath.replace(".asm", ".cmp")
 
                 context("when $asmFile is assembled") {
-                    before { Assembler(asmPath, false).assemble() }
+                    before {
+                        val parser = Parser(asmPath, false)
+                        val writer = BufferedWriter(FileWriter(hackPath))
+                        Assembler(parser, writer, false).use { it.assemble() }
+                    }
 
                     it ("should equal $cmpFile") {
                         val hack = FileReader(hackPath).use { it.readText() }
@@ -38,7 +44,11 @@ object AssemblerSpec : Spek({
                 val cmpPath = asmPath.replace(".asm", ".cmp")
 
                 context("when $asmFile is assembled") {
-                    before { Assembler(asmPath, false).assemble() }
+                    before {
+                        val parser = Parser(asmPath, false)
+                        val writer = BufferedWriter(FileWriter(hackPath))
+                        Assembler(parser, writer, false).use { it.assemble() }
+                    }
 
                     it ("should equal $cmpFile") {
                         val hack = FileReader(hackPath).use { it.readText() }

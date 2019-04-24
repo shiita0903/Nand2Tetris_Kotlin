@@ -1,31 +1,37 @@
 package jp.shiita.assembler
 
 import java.io.BufferedWriter
+import java.io.Closeable
+import java.io.File
 import java.io.FileWriter
 
-class Assembler(private val asmPath: String, private val printInfo: Boolean = false) {
-    private val hackPath = asmPath.replace(".asm", ".hack")
+class Assembler(
+    private val parser: Parser,
+    private val writer: BufferedWriter,
+    private val printInfo: Boolean
+) : Closeable {
+
+    override fun close() {
+        parser.close()
+        writer.close()
+    }
 
     fun assemble() {
-        Parser(asmPath, printInfo).use { parser ->
-            BufferedWriter(FileWriter(hackPath)).use { writer ->
-                while (parser.hasMoreCommands) {
-                    parser.advance()
-                    when (parser.commandType) {
-                        Parser.CommandType.A -> {
-                            val const = parser.symbol
-                            writeWord(writer, const)
-                        }
-                        Parser.CommandType.C -> {
-                            var word = 0b111 shl 13
-                            parser.comp?.let { word = word or (Code.comp(it) shl 6) }
-                            parser.dest?.let { word = word or (Code.dest(it) shl 3) }
-                            parser.jump?.let { word = word or Code.jump(it) }
-                            writeWord(writer, word)
-                        }
-                        Parser.CommandType.L -> {}
-                    }
+        while (parser.hasMoreCommands) {
+            parser.advance()
+            when (parser.commandType) {
+                Parser.CommandType.A -> {
+                    val const = parser.symbol
+                    writeWord(writer, const)
                 }
+                Parser.CommandType.C -> {
+                    var word = 0b111 shl 13
+                    parser.comp?.let { word = word or (Code.comp(it) shl 6) }
+                    parser.dest?.let { word = word or (Code.dest(it) shl 3) }
+                    parser.jump?.let { word = word or Code.jump(it) }
+                    writeWord(writer, word)
+                }
+                Parser.CommandType.L -> {}
             }
         }
     }
@@ -38,5 +44,18 @@ class Assembler(private val asmPath: String, private val printInfo: Boolean = fa
     }
 }
 
-fun main(args: Array<String>) = Assembler("src/main/resource/assembler/${args[0]}", true).assemble()
+fun main(args: Array<String>) {
+    val file = File("src/main/resource/assembler/${args[0]}")
+
+    if (file.extension == "asm") {
+        val parser = Parser(file.path, printSymbolTable = true)
+        val writer = BufferedWriter(FileWriter(file.path.replace(".asm", ".hack")))
+
+        Assembler(parser, writer, printInfo = true).use { it.assemble() }
+        println("assemble is finished")
+    }
+    else {
+        println(".asm file is not found")
+    }
+}
 
