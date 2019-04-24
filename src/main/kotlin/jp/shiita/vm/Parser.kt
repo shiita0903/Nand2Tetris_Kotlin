@@ -6,10 +6,13 @@ import java.io.StreamTokenizer
 
 class Parser(path: String) : Closeable {
     lateinit var commandType: CommandType
+        private set
     val hasMoreCommands: Boolean
         get() = tokenizer.ttype != StreamTokenizer.TT_EOF
     var arg1: String? = null
+        private set
     var arg2: Int? = null
+        private set
 
     private var reader = FileReader(path)
     private val tokenizer = StreamTokenizer(reader)
@@ -18,9 +21,7 @@ class Parser(path: String) : Closeable {
         tokenizer.nextToken()
     }
 
-    override fun close() {
-        reader.close()
-    }
+    override fun close() = reader.close()
 
     fun advance() {
         if (!hasMoreCommands) return
