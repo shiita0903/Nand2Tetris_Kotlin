@@ -1,5 +1,6 @@
 package jp.shiita.assembler
 
+import jp.shiita.extensions.replaced
 import java.io.BufferedWriter
 import java.io.Closeable
 import java.io.File
@@ -49,7 +50,7 @@ fun main(args: Array<String>) {
 
     if (file.extension == "asm") {
         val parser = Parser(file.path, printSymbolTable = true)
-        val writer = BufferedWriter(FileWriter(file.path.replace(".asm", ".hack")))
+        val writer = BufferedWriter(FileWriter(file.replaced(extension = "hack").path))
 
         Assembler(parser, writer, printInfo = true).use { it.assemble() }
         println("assemble is finished")

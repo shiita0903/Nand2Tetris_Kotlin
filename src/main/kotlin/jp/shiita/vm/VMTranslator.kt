@@ -1,5 +1,6 @@
 package jp.shiita.vm
 
+import jp.shiita.extensions.replaced
 import java.io.Closeable
 import java.io.File
 
@@ -36,7 +37,7 @@ fun main(args: Array<String>) {
     if (file.isFile) {
         if (file.extension == "vm") {
             val parsers = listOf(Parser(file.path))
-            val writer = CodeWriter(file.path.replace(".vm", ".asm"))
+            val writer = CodeWriter(file.replaced(extension = "asm").path)
 
             VMTranslator(parsers, writer).use { it.translate() }
             println("translation is finished")
@@ -47,7 +48,7 @@ fun main(args: Array<String>) {
         val vmFiles = file.listFiles { f -> f.extension == "vm" }
         if (!vmFiles.isNullOrEmpty()) {
             val parsers = vmFiles.map { Parser(it.path) }
-            val writer = CodeWriter("$file${File.separator}${file.name}.asm")
+            val writer = CodeWriter("${file.path}/${file.name}.asm")
 
             VMTranslator(parsers, writer).use { it.translate() }
             println("translation is finished")

@@ -1,62 +1,60 @@
 package jp.shiita.assembler
 
+import jp.shiita.extensions.replaced
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.spekframework.spek2.Spek
 import org.spekframework.spek2.style.specification.describe
 import java.io.BufferedWriter
 import java.io.File
-import java.io.FileReader
 import java.io.FileWriter
 
 object AssemblerSpec : Spek({
     describe("Assembler#assemble(without symbol)") {
         listOf("Add.asm", "MaxL.asm", "PongL.asm", "RectL.asm")
-            .map { it to "src/test/resource/assembler/$it" }
-            .forEach { (asmFile, asmPath) ->
-                val cmpFile = asmFile.replace(".asm", ".cmp")
-                val hackPath = asmPath.replace(".asm", ".hack")
-                val cmpPath = asmPath.replace(".asm", ".cmp")
+            .map { File("src/test/resource/assembler/$it") }
+            .forEach { asmFile ->
+                val cmpFile = asmFile.replaced("cmp")
+                val hackFile = asmFile.replaced("hack")
 
-                context("when $asmFile is assembled") {
+                context("when ${asmFile.name} is assembled") {
                     before {
-                        val parser = Parser(asmPath, false)
-                        val writer = BufferedWriter(FileWriter(hackPath))
+                        val parser = Parser(asmFile.path, false)
+                        val writer = BufferedWriter(FileWriter(hackFile.path))
                         Assembler(parser, writer, false).use { it.assemble() }
                     }
 
-                    it ("should equal $cmpFile") {
-                        val hack = FileReader(hackPath).use { it.readText() }
-                        val cmp = FileReader(cmpPath).use { it.readText() }
+                    it ("should equal ${cmpFile.name}") {
+                        val hack = hackFile.readText()
+                        val cmp = cmpFile.readText()
                         assertEquals(hack, cmp)
                     }
 
-                    after { File(hackPath).delete() }
+                    after { hackFile.delete() }
                 }
             }
     }
 
     describe("Assembler#assemble(with symbol)") {
         listOf("Max.asm", "Pong.asm", "Rect.asm")
-            .map { it to "src/test/resource/assembler/$it" }
-            .forEach { (asmFile, asmPath) ->
-                val cmpFile = asmFile.replace(".asm", ".cmp")
-                val hackPath = asmPath.replace(".asm", ".hack")
-                val cmpPath = asmPath.replace(".asm", ".cmp")
+            .map { File("src/test/resource/assembler/$it") }
+            .forEach { asmFile ->
+                val cmpFile = asmFile.replaced("cmp")
+                val hackFile = asmFile.replaced("hack")
 
-                context("when $asmFile is assembled") {
+                context("when ${asmFile.name} is assembled") {
                     before {
-                        val parser = Parser(asmPath, false)
-                        val writer = BufferedWriter(FileWriter(hackPath))
+                        val parser = Parser(asmFile.path, false)
+                        val writer = BufferedWriter(FileWriter(hackFile.path))
                         Assembler(parser, writer, false).use { it.assemble() }
                     }
 
-                    it ("should equal $cmpFile") {
-                        val hack = FileReader(hackPath).use { it.readText() }
-                        val cmp = FileReader(cmpPath).use { it.readText() }
+                    it ("should equal ${cmpFile.name}") {
+                        val hack = hackFile.readText()
+                        val cmp = cmpFile.readText()
                         assertEquals(hack, cmp)
                     }
 
-                    after { File(hackPath).delete() }
+                    after { hackFile.delete() }
                 }
             }
     }
