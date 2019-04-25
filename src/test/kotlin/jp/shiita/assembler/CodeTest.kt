@@ -39,7 +39,9 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected, Code.comp(mnemonic)) }
+                it("should return 0b${expected.toString(2).padStart(7, '0')}") {
+                    assertEquals(expected, Code.comp(mnemonic))
+                }
             }
         }
 
@@ -70,7 +72,9 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected, Code.dest(mnemonic)) }
+                it("should return 0b${expected.toString(2).padStart(3, '0')}") {
+                    assertEquals(expected, Code.dest(mnemonic))
+                }
             }
         }
 
@@ -93,7 +97,9 @@ object CodeSpec : Spek({
 
         mnemonics.forEach { (mnemonic, expected) ->
             context("when mnemonic is $mnemonic") {
-                it("should return $expected") { assertEquals(expected, Code.jump(mnemonic)) }
+                it("should return 0b${expected.toString(2).padStart(3, '0')}") {
+                    assertEquals(expected, Code.jump(mnemonic))
+                }
             }
         }
 
