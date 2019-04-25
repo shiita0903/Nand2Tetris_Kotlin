@@ -1,12 +1,14 @@
 package jp.shiita.vm
 
 import java.io.Closeable
+import java.io.File
 import java.io.FileReader
 import java.io.StreamTokenizer
 
 class Parser(path: String) : Closeable {
     lateinit var commandType: CommandType
         private set
+    val name = File(path).nameWithoutExtension
     val hasMoreCommands: Boolean
         get() = tokenizer.ttype != StreamTokenizer.TT_EOF
     var arg1: String? = null
@@ -41,13 +43,10 @@ class Parser(path: String) : Closeable {
             CommandType.PUSH, CommandType.POP -> {
                 tokenizer.nextToken()
                 arg1 = tokenizer.sval
-                when (arg1) {
-                    "constant" -> {
-                        tokenizer.nextToken()
-                        arg2 = tokenizer.nval.toInt()
-                    }
-                    else -> TODO()
-                }
+                if (tokenizer.sval !in segments) error("invalid segment : \"${tokenizer.sval}\"")
+
+                tokenizer.nextToken()
+                arg2 = tokenizer.nval.toInt()
             }
             else -> TODO()
         }
@@ -58,5 +57,6 @@ class Parser(path: String) : Closeable {
 
     companion object {
         private val arithmeticCommands = listOf("add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not")
+        private val segments = listOf("argument", "local", "static", "constant", "this", "that", "pointer", "temp")
     }
 }

@@ -5,6 +5,7 @@ import java.io.Closeable
 import java.io.FileWriter
 
 class CodeWriter(path: String) : Closeable {
+    var vmFileName: String = ""
     private val writer = BufferedWriter(FileWriter(path))
     private var eqNum = 0
     private var gtNum = 0
@@ -50,20 +51,62 @@ class CodeWriter(path: String) : Closeable {
                 "A=M-1",
                 "M=${opMap[command]}M"))
         }
-        else  -> error("invalid command : \"$command\"")
+        else -> error("invalid command : \"$command\"")
     }
 
     fun writePushPop(commandType: Parser.CommandType, segment: String, index: Int) = when (commandType) {
         Parser.CommandType.PUSH -> {
+            when (segment) {
+                "constant" -> writeLines(listOf(
+                    "@$index",
+                    "D=A"))
+                in symbolMap.keys -> writeLines(listOf(
+                    "@${symbolMap[segment]}",
+                    "D=M",
+                    "@$index",
+                    "A=D+A",
+                    "D=M"))
+                in baseMap.keys -> writeLines(listOf(
+                    "@${baseMap.getOrDefault(segment, 0) + index}",
+                    "D=M"))
+                "static" -> writeLines(listOf(
+                    "@$vmFileName.$index",
+                    "D=M"
+                ))
+                else -> error("invalid segment : \"$commandType $segment $index\"")
+            }
             writeLines(listOf(
-                "@$index",
-                "D=A",
                 "@SP",
                 "AM=M+1",
                 "A=A-1",
                 "M=D"))
         }
-        else  -> error("invalid command : \"$commandType $segment $index\"")
+        Parser.CommandType.POP -> {
+            when (segment) {
+                in symbolMap.keys -> writeLines(listOf(
+                    "@${symbolMap[segment]}",
+                    "D=M",
+                    "@$index",
+                    "D=D+A"))
+                in baseMap.keys -> writeLines(listOf(
+                    "@${baseMap.getOrDefault(segment, 0) + index}",
+                    "D=A"))
+                "static" -> writeLines(listOf(
+                    "@$vmFileName.$index",
+                    "D=A"))
+                else -> error("invalid segment : \"$commandType $segment $index\"")
+            }
+            writeLines(listOf(
+                "@R13",
+                "M=D",
+                "@SP",
+                "AM=M-1",
+                "D=M",
+                "@R13",
+                "A=M",
+                "M=D"))
+        }
+        else -> error("invalid command : \"$commandType $segment $index\"")
     }
 
     private fun initStack() = writeLines(listOf(
@@ -75,7 +118,7 @@ class CodeWriter(path: String) : Closeable {
         "0;JMP"))
 
     private fun initEQ() = writeLines(listOf(
-        "@R15",
+        "@R13",
         "M=D",
         "@SP",
         "AM=M-1",
@@ -89,12 +132,12 @@ class CodeWriter(path: String) : Closeable {
         "A=M-1",
         "M=-1",
         "(END_EQ)",
-        "@R15",
+        "@R13",
         "A=M",
         "0;JMP"))
 
     private fun initGT() = writeLines(listOf(
-        "@R15",
+        "@R13",
         "M=D",
         "@SP",
         "AM=M-1",
@@ -108,12 +151,12 @@ class CodeWriter(path: String) : Closeable {
         "A=M-1",
         "M=-1",
         "(END_GT)",
-        "@R15",
+        "@R13",
         "A=M",
         "0;JMP"))
 
     private fun initLT() = writeLines(listOf(
-        "@R15",
+        "@R13",
         "M=D",
         "@SP",
         "AM=M-1",
@@ -127,7 +170,7 @@ class CodeWriter(path: String) : Closeable {
         "A=M-1",
         "M=-1",
         "(END_LT)",
-        "@R15",
+        "@R13",
         "A=M",
         "0;JMP"))
 
@@ -151,5 +194,15 @@ class CodeWriter(path: String) : Closeable {
             "or"  to "|",
             "neg" to "-",
             "not" to "!")
+
+        private val baseMap = mapOf(
+            "pointer" to 3,
+            "temp" to 5)
+
+        private val symbolMap = mapOf(
+            "local" to "LCL",
+            "argument" to "ARG",
+            "this" to "THIS",
+            "that" to "THAT")
     }
 }
