@@ -19,12 +19,18 @@ class VMTranslator(private val parsers: List<Parser>, private val writer: CodeWr
                 when (parser.commandType) {
                     Parser.CommandType.ARITHMETIC -> writer.writeArithmetic(parser.arg1!!)
                     Parser.CommandType.PUSH, Parser.CommandType.POP -> writer.writePushPop(parser.commandType, parser.arg1!!, parser.arg2!!)
-                    Parser.CommandType.LABEL -> {}
-                    Parser.CommandType.GOTO -> {}
-                    Parser.CommandType.IF -> {}
-                    Parser.CommandType.FUNCTION -> {}
-                    Parser.CommandType.RETURN -> {}
-                    Parser.CommandType.CALL -> {}
+                    Parser.CommandType.LABEL -> {
+                    }
+                    Parser.CommandType.GOTO -> {
+                    }
+                    Parser.CommandType.IF -> {
+                    }
+                    Parser.CommandType.FUNCTION -> {
+                    }
+                    Parser.CommandType.RETURN -> {
+                    }
+                    Parser.CommandType.CALL -> {
+                    }
                 }
             }
         }
@@ -43,8 +49,7 @@ fun main(args: Array<String>) {
             println("translation is finished")
             return
         }
-    }
-    else {
+    } else {
         val vmFiles = file.listFiles { f -> f.extension == "vm" }
         if (!vmFiles.isNullOrEmpty()) {
             val parsers = vmFiles.map { Parser(it.path) }

@@ -7,9 +7,9 @@ import java.io.File
 import java.io.FileWriter
 
 class Assembler(
-    private val parser: Parser,
-    private val writer: BufferedWriter,
-    private val printInfo: Boolean
+        private val parser: Parser,
+        private val writer: BufferedWriter,
+        private val printInfo: Boolean
 ) : Closeable {
 
     override fun close() {
@@ -32,7 +32,8 @@ class Assembler(
                     parser.jump?.let { word = word or Code.jump(it) }
                     writeWord(writer, word)
                 }
-                Parser.CommandType.L -> {}
+                Parser.CommandType.L -> {
+                }
             }
         }
     }
@@ -54,8 +55,7 @@ fun main(args: Array<String>) {
 
         Assembler(parser, writer, printInfo = true).use { it.assemble() }
         println("assemble is finished")
-    }
-    else {
+    } else {
         println(".asm file is not found")
     }
 }

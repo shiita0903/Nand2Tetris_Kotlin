@@ -1,7 +1,6 @@
 package jp.shiita.vm
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.assertThrows
 import org.spekframework.spek2.Spek
 import org.spekframework.spek2.style.specification.describe
 import java.io.File
@@ -30,18 +29,20 @@ object ParserSpec : Spek({
             val segments = listOf("argument", "local", "static", "constant", "this", "that", "pointer", "temp")
             val indices = listOf(0, 1)
 
-            segments.forEach { segment -> indices.forEach { index ->
-                it("when push $segment $index is parsed") {
-                    file.writeText("push $segment $index")
-                    val parser = Parser(file.path)
+            segments.forEach { segment ->
+                indices.forEach { index ->
+                    it("when push $segment $index is parsed") {
+                        file.writeText("push $segment $index")
+                        val parser = Parser(file.path)
 
-                    parser.advance()
+                        parser.advance()
 
-                    assertEquals(Parser.CommandType.PUSH, parser.commandType)
-                    assertEquals(segment, parser.arg1)
-                    assertEquals(index, parser.arg2)
+                        assertEquals(Parser.CommandType.PUSH, parser.commandType)
+                        assertEquals(segment, parser.arg1)
+                        assertEquals(index, parser.arg2)
+                    }
                 }
-            } }
+            }
         }
 
         file.deleteOnExit()
@@ -50,18 +51,20 @@ object ParserSpec : Spek({
             val segments = listOf("argument", "local", "static", "constant", "this", "that", "pointer", "temp")
             val indices = listOf(0, 1)
 
-            segments.forEach { segment -> indices.forEach { index ->
-                it("when pop $segment $index is parsed") {
-                    file.writeText("pop $segment $index")
-                    val parser = Parser(file.path)
+            segments.forEach { segment ->
+                indices.forEach { index ->
+                    it("when pop $segment $index is parsed") {
+                        file.writeText("pop $segment $index")
+                        val parser = Parser(file.path)
 
-                    parser.advance()
+                        parser.advance()
 
-                    assertEquals(Parser.CommandType.POP, parser.commandType)
-                    assertEquals(segment, parser.arg1)
-                    assertEquals(index, parser.arg2)
+                        assertEquals(Parser.CommandType.POP, parser.commandType)
+                        assertEquals(segment, parser.arg1)
+                        assertEquals(index, parser.arg2)
+                    }
                 }
-            } }
+            }
         }
 
         file.deleteOnExit()
