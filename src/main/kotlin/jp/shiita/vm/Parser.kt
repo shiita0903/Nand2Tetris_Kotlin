@@ -17,7 +17,11 @@ class Parser(path: String) : Closeable {
         private set
 
     private var reader = FileReader(path)
-    private val tokenizer = StreamTokenizer(reader)
+    private val tokenizer = StreamTokenizer(reader).apply {
+        listOf('_', ':')
+                .map(Char::toInt)
+                .forEach { c -> wordChars(c, c) }
+    }
 
     init {
         tokenizer.nextToken()
@@ -28,11 +32,17 @@ class Parser(path: String) : Closeable {
     fun advance() {
         if (!hasMoreCommands) return
 
-        commandType = when (tokenizer.sval) {
+        commandType = when (val command = tokenizer.sval) {
             in arithmeticCommands -> CommandType.ARITHMETIC
             "push" -> CommandType.PUSH
             "pop" -> CommandType.POP
-            else -> TODO()
+            "label" -> CommandType.LABEL
+            "goto" -> CommandType.GOTO
+            "if-goto" -> CommandType.IF
+            "function" -> CommandType.FUNCTION
+            "return" -> CommandType.RETURN
+            "call" -> CommandType.CALL
+            else -> error("invalid command : \"$command\"")
         }
 
         when (commandType) {
@@ -40,15 +50,22 @@ class Parser(path: String) : Closeable {
                 arg1 = tokenizer.sval
                 arg2 = null
             }
-            CommandType.PUSH, CommandType.POP -> {
+            CommandType.PUSH, CommandType.POP, CommandType.FUNCTION, CommandType.CALL -> {
                 tokenizer.nextToken()
                 arg1 = tokenizer.sval
-                if (tokenizer.sval !in segments) error("invalid segment : \"${tokenizer.sval}\"")
+                if (commandType in listOf(CommandType.PUSH, CommandType.POP) && tokenizer.sval !in segments)
+                    error("invalid segment : \"${tokenizer.sval}\"")
 
                 tokenizer.nextToken()
                 arg2 = tokenizer.nval.toInt()
             }
-            else -> TODO()
+            CommandType.LABEL, CommandType.GOTO, CommandType.IF -> {
+                tokenizer.nextToken()
+                arg1 = tokenizer.sval
+                arg2 = null
+            }
+            CommandType.RETURN -> {
+            }
         }
         tokenizer.nextToken()
     }

@@ -21,6 +21,7 @@ object ParserSpec : Spek({
 
                     assertEquals(Parser.CommandType.ARITHMETIC, parser.commandType)
                     assertEquals(command, parser.arg1)
+                    assertEquals(null, parser.arg2)
                 }
             }
         }
@@ -45,8 +46,6 @@ object ParserSpec : Spek({
             }
         }
 
-        file.deleteOnExit()
-
         context("when pop is parsed") {
             val segments = listOf("argument", "local", "static", "constant", "this", "that", "pointer", "temp")
             val indices = listOf(0, 1)
@@ -63,6 +62,87 @@ object ParserSpec : Spek({
                         assertEquals(segment, parser.arg1)
                         assertEquals(index, parser.arg2)
                     }
+                }
+            }
+        }
+
+        context("when label is parsed") {
+            val label = "azAZ10_.:"
+
+            it("when label $label is parsed") {
+                file.writeText("label $label")
+                val parser = Parser(file.path)
+
+                parser.advance()
+
+                assertEquals(Parser.CommandType.LABEL, parser.commandType)
+                assertEquals(label, parser.arg1)
+                assertEquals(null, parser.arg2)
+            }
+        }
+
+        context("when goto is parsed") {
+            val label = "azAZ10_.:"
+
+            it("when goto $label is parsed") {
+                file.writeText("goto $label")
+                val parser = Parser(file.path)
+
+                parser.advance()
+
+                assertEquals(Parser.CommandType.GOTO, parser.commandType)
+                assertEquals(label, parser.arg1)
+                assertEquals(null, parser.arg2)
+            }
+        }
+
+        context("when if-goto is parsed") {
+            val label = "azAZ10_.:"
+
+            it("when if-goto $label is parsed") {
+                file.writeText("if-goto $label")
+                val parser = Parser(file.path)
+
+                parser.advance()
+
+                assertEquals(Parser.CommandType.IF, parser.commandType)
+                assertEquals(label, parser.arg1)
+                assertEquals(null, parser.arg2)
+            }
+        }
+
+        context("when function is parsed") {
+            val functionName = "azAZ10_.:"
+            val nums = listOf(0, 1, 10)
+
+            nums.forEach { num ->
+                it("when function $functionName $num is parsed") {
+                    file.writeText("function $functionName $num")
+                    val parser = Parser(file.path)
+
+                    parser.advance()
+
+                    assertEquals(Parser.CommandType.FUNCTION, parser.commandType)
+                    assertEquals(functionName, parser.arg1)
+                    assertEquals(num, parser.arg2)
+                }
+            }
+        }
+
+        context("when call is parsed") {
+            val functionName = "azAZ10_.:"
+            val nums = listOf(0, 1, 10)
+
+            nums.forEach { num ->
+                it("when call $functionName $num is parsed") {
+                    file.writeText("call $functionName $num")
+                    val parser = Parser(file.path)
+
+                    parser.advance()
+
+                    assertEquals(Parser.CommandType.CALL, parser.commandType)
+                    assertEquals(functionName, parser.arg1)
+                    assertEquals(num, parser.arg2)
                 }
             }
         }
