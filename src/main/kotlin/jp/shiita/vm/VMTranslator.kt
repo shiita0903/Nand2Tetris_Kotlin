@@ -12,6 +12,7 @@ class VMTranslator(private val parsers: List<Parser>, private val writer: CodeWr
     }
 
     fun translate() {
+        writer.writeInit()
         parsers.forEach { parser ->
             writer.vmFileName = parser.name
             while (parser.hasMoreCommands) {
@@ -19,18 +20,12 @@ class VMTranslator(private val parsers: List<Parser>, private val writer: CodeWr
                 when (parser.commandType) {
                     Parser.CommandType.ARITHMETIC -> writer.writeArithmetic(parser.arg1!!)
                     Parser.CommandType.PUSH, Parser.CommandType.POP -> writer.writePushPop(parser.commandType, parser.arg1!!, parser.arg2!!)
-                    Parser.CommandType.LABEL -> {
-                    }
-                    Parser.CommandType.GOTO -> {
-                    }
-                    Parser.CommandType.IF -> {
-                    }
-                    Parser.CommandType.FUNCTION -> {
-                    }
-                    Parser.CommandType.RETURN -> {
-                    }
-                    Parser.CommandType.CALL -> {
-                    }
+                    Parser.CommandType.LABEL -> writer.writeLabel(parser.arg1!!)
+                    Parser.CommandType.GOTO -> writer.writeGoto(parser.arg1!!)
+                    Parser.CommandType.IF -> writer.writeIf(parser.arg1!!)
+                    Parser.CommandType.FUNCTION -> writer.writeFunction(parser.arg1!!, parser.arg2!!)
+                    Parser.CommandType.RETURN -> writer.writeReturn()
+                    Parser.CommandType.CALL -> writer.writeCall(parser.arg1!!, parser.arg2!!)
                 }
             }
         }

@@ -10,14 +10,19 @@ class CodeWriter(path: String) : Closeable {
     private var eqNum = 0
     private var gtNum = 0
     private var ltNum = 0
+    private var callNum = 0
+    private var currentFunctionName = ""
 
     override fun close() = writer.close()
 
-    init {
+    fun writeInit() {
         initStack()
         initEQ()
         initGT()
         initLT()
+        initCall()
+        initReturn()
+        writeCall("Sys.init", 0)
     }
 
     fun writeArithmetic(command: String) = when (command) {
@@ -109,6 +114,55 @@ class CodeWriter(path: String) : Closeable {
         else -> error("invalid command : \"$commandType $segment $index\"")
     }
 
+    fun writeLabel(label: String) = writeln("($currentFunctionName\$$label)")
+
+    fun writeGoto(label: String) = writeLines(listOf(
+            "@$currentFunctionName\$$label",
+            "0;JMP"))
+
+    fun writeIf(label: String) = writeLines(listOf(
+            "@SP",
+            "AM=M-1",
+            "D=M",
+            "@$currentFunctionName\$$label",
+            "D;JNE"))
+
+    fun writeCall(functionName: String, numArgs: Int) = writeLines(listOf(
+            "@$numArgs",
+            "D=A",
+            "@R13",
+            "M=D",
+            "@$functionName",
+            "D=A",
+            "@R14",
+            "M=D",
+            "@RET_ADDRESS_CALL$callNum",
+            "D=A",
+            "@$ADDR_CALL",
+            "0;JMP",
+            "(RET_ADDRESS_CALL${callNum++})"))
+
+    fun writeReturn() = writeLines(listOf(
+            "@$ADDR_RETURN",
+            "0;JMP"))
+
+    fun writeFunction(functionName: String, numLocals: Int) {
+        currentFunctionName = functionName
+        writeln("($functionName)")
+
+        if (numLocals > 0) writeLines(listOf(
+                "@$numLocals",
+                "D=A",
+                "(LOOP_$functionName)",
+                "D=D-1",
+                "@SP",
+                "AM=M+1",
+                "A=A-1",
+                "M=0",
+                "@LOOP_$functionName",
+                "D;JGT"))
+    }
+
     private fun initStack() = writeLines(listOf(
             "@256",
             "D=A",
@@ -118,7 +172,7 @@ class CodeWriter(path: String) : Closeable {
             "0;JMP"))
 
     private fun initEQ() = writeLines(listOf(
-            "@R13",
+            "@R15",
             "M=D",
             "@SP",
             "AM=M-1",
@@ -132,12 +186,12 @@ class CodeWriter(path: String) : Closeable {
             "A=M-1",
             "M=-1",
             "(END_EQ)",
-            "@R13",
+            "@R15",
             "A=M",
             "0;JMP"))
 
     private fun initGT() = writeLines(listOf(
-            "@R13",
+            "@R15",
             "M=D",
             "@SP",
             "AM=M-1",
@@ -151,12 +205,12 @@ class CodeWriter(path: String) : Closeable {
             "A=M-1",
             "M=-1",
             "(END_GT)",
-            "@R13",
+            "@R15",
             "A=M",
             "0;JMP"))
 
     private fun initLT() = writeLines(listOf(
-            "@R13",
+            "@R15",
             "M=D",
             "@SP",
             "AM=M-1",
@@ -170,9 +224,97 @@ class CodeWriter(path: String) : Closeable {
             "A=M-1",
             "M=-1",
             "(END_LT)",
-            "@R13",
+            "@R15",
             "A=M",
             "0;JMP"))
+
+    private fun initCall() {
+        // store return address
+        writeLines(listOf(
+                "@SP",
+                "A=M",
+                "M=D"))
+
+        // store segment base address
+        listOf("@LCL", "@ARG", "@THIS", "@THAT").forEach { label ->
+            writeLines(listOf(
+                    label,
+                    "D=M",
+                    "@SP",
+                    "AM=M+1",
+                    "M=D"))
+        }
+
+        // set ARG and LCL base address
+        writeLines(listOf(
+                "@4",
+                "D=A",
+                "@R13",
+                "D=D+M",
+                "@SP",
+                "D=M-D",
+                "@ARG",
+                "M=D",
+                "@SP",
+                "MD=M+1",
+                "@LCL",
+                "M=D"))
+
+        // call function
+        writeLines(listOf(
+                "@R14",
+                "A=M",
+                "0;JMP"))
+    }
+
+    private fun initReturn() {
+        // set R13 as return address
+        writeLines(listOf(
+                "@5",
+                "D=A",
+                "@LCL",
+                "A=M-D",
+                "D=M",
+                "@R13",
+                "M=D"))
+
+        // set SP and return value
+        writeLines(listOf(
+                "@SP",
+                "AM=M-1",
+                "D=M",
+                "@ARG",
+                "A=M",
+                "M=D",
+                "D=A",
+                "@SP",
+                "M=D+1"))
+
+        // restore segment base address
+        writeLines(listOf(
+                "@LCL",
+                "D=M",
+                "@R14",
+                "AM=D-1",
+                "D=M"))
+        listOf("@THAT", "@THIS", "@ARG").forEach { label ->
+            writeLines(listOf(
+                    label,
+                    "M=D",
+                    "@R14",
+                    "AM=M-1",
+                    "D=M"))
+        }
+        writeLines(listOf(
+                "@LCL",
+                "M=D"))
+
+        // return
+        writeLines(listOf(
+                "@R13",
+                "A=M",
+                "0;JMP"))
+    }
 
     private fun writeLines(lines: List<String>) = lines.forEach(::writeln)
 
@@ -185,7 +327,9 @@ class CodeWriter(path: String) : Closeable {
         private const val ADDR_EQ = 6
         private const val ADDR_GT = ADDR_EQ + 16
         private const val ADDR_LT = ADDR_GT + 16
-        private const val ADDR_START = ADDR_LT + 16
+        private const val ADDR_CALL = ADDR_LT + 16
+        private const val ADDR_RETURN = ADDR_CALL + 38
+        private const val ADDR_START = ADDR_RETURN + 41
 
         private val opMap = mapOf(
                 "add" to "+",
