@@ -47,7 +47,7 @@ class Assembler(
 }
 
 fun main(args: Array<String>) {
-    val file = File("src/main/resource/assembler/${args[0]}")
+    val file = File("src/main/resources/assembler/${args[0]}")
 
     if (file.extension == "asm") {
         val parser = Parser(file.path, printSymbolTable = true)

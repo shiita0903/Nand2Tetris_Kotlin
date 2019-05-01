@@ -37,7 +37,7 @@ class VMTranslator(private val parsers: List<Parser>, private val writer: CodeWr
 }
 
 fun main(args: Array<String>) {
-    val file = File("src/main/resource/vm/${args[0]}")
+    val file = File("src/main/resources/vm/${args[0]}")
 
     if (file.isFile) {
         if (file.extension == "vm") {

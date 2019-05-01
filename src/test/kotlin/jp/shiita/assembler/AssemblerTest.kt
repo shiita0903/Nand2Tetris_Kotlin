@@ -11,7 +11,7 @@ import java.io.FileWriter
 object AssemblerSpec : Spek({
     describe("Assembler#assemble(without symbol)") {
         listOf("Add.asm", "MaxL.asm", "PongL.asm", "RectL.asm")
-            .map { File("src/test/resource/assembler/$it") }
+            .map { File("src/test/resources/assembler/$it") }
             .forEach { asmFile ->
                 val cmpFile = asmFile.replaced("cmp")
                 val hackFile = asmFile.replaced("hack")
@@ -36,7 +36,7 @@ object AssemblerSpec : Spek({
 
     describe("Assembler#assemble(with symbol)") {
         listOf("Max.asm", "Pong.asm", "Rect.asm")
-            .map { File("src/test/resource/assembler/$it") }
+            .map { File("src/test/resources/assembler/$it") }
             .forEach { asmFile ->
                 val cmpFile = asmFile.replaced("cmp")
                 val hackFile = asmFile.replaced("hack")
