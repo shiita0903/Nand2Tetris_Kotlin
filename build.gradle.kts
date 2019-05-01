@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.3.21"
+    id("jacoco")
 }
 
 group = "jp.shiita"
@@ -14,7 +15,7 @@ repositories {
 
 val kotlinVersion = "1.3.21"
 val junitVersion = "5.3.1"
-val spekVersion = "2.0.2"
+val spekVersion = "2.0.3"
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
@@ -31,8 +32,18 @@ tasks.withType<Test> {
     useJUnitPlatform {
         includeEngines("spek2")
     }
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
 }
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.getByName<JacocoReport>("jacocoTestReport") {
+    reports {
+        xml.isEnabled = true
+        html.isEnabled = true
+    }
 }

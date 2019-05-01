@@ -1,0 +1,75 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+
+    environment:
+      JVM_OPTS: -Xmx3200m
+      TERM: dumb
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "build.gradle.kts" }}
+            - v1-dependencies-
+
+      - run: gradle dependencies
+      - run: gradle build -x test
+
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: v1-dependencies-{{ checksum "build.gradle.kts" }}
+
+      - persist_to_workspace:
+          root: ~/repo
+          paths:
+            - .
+
+  test:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+
+    steps:
+      - attach_workspace:
+          at: ~/repo
+
+      - run: gradle test
+
+      - persist_to_workspace:
+          root: ~/repo
+          paths:
+            - .
+
+  codecov:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+
+    steps:
+      - attach_workspace:
+          at: ~/repo
+
+      - run: gradle jacocoTestReport
+      - run: bash <(curl -s https://codecov.io/bash)
+
+workflows:
+  version: 2
+  workflow_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - codecov:
+          requires:
+            - build
+            - test
