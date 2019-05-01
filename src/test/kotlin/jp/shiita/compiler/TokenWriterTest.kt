@@ -8,7 +8,7 @@ import java.io.File
 object TokenWriterSpec : Spek({
     describe("TokenWriter#tokenize") {
         listOf("ArrayTest/Main.jack", "Square/Main.jack", "Square/Square.jack", "Square/SquareGame.jack")
-            .map { File("src/test/resource/compiler/$it") }
+            .map { File("src/test/resources/compiler/$it") }
             .forEach { jackFile ->
                 val cmpFile = File("${jackFile.path.substringBeforeLast(".")}T_cmp.xml")
                 val tokenizedFile = File("${jackFile.path.substringBeforeLast(".")}T.xml")
