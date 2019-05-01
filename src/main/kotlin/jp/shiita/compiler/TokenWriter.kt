@@ -40,9 +40,10 @@ class TokenWriter(private val tokenizer: JackTokenizer, path: String) : Closeabl
 
     companion object {
         private val escapeMap = mapOf(
-                '<' to "&lt;",
-                '>' to "&gt;",
-                '&' to "&amp;")
+            '<' to "&lt;",
+            '>' to "&gt;",
+            '&' to "&amp;"
+        )
     }
 }
 

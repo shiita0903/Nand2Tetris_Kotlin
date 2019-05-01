@@ -23,8 +23,8 @@ class JackTokenizer(path: String) : Closeable {
     private var reader = FileReader(path)
     private val tokenizer = StreamTokenizer(reader).apply {
         listOf('_')
-                .map(Char::toInt)
-                .forEach { c -> wordChars(c, c) }
+            .map(Char::toInt)
+            .forEach { c -> wordChars(c, c) }
 
         symbols.forEach(::ordinaryChar)
 
@@ -80,7 +80,8 @@ class JackTokenizer(path: String) : Closeable {
     companion object {
         private val keywords = Keyword.values().map { it.name.toLowerCase() }
         private val symbols: List<Int> = listOf(
-                '{', '}', '(', ')', '[', ']', '.', ',', ';',
-                '+', '-', '*', '/', '&', '|', '<', '>', '=', '~').map(Char::toInt)
+            '{', '}', '(', ')', '[', ']', '.', ',', ';',
+            '+', '-', '*', '/', '&', '|', '<', '>', '=', '~'
+        ).map(Char::toInt)
     }
 }
