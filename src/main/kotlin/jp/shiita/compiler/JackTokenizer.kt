@@ -11,6 +11,8 @@ class JackTokenizer(path: String) : Closeable {
         get() = tokenizer.ttype != StreamTokenizer.TT_EOF
     var keyword: Keyword? = null
         private set
+    val keywordStr: String?
+        get() = keyword?.getLower()
     var symbol: Char? = null
         private set
     var identifier: String? = null
@@ -74,11 +76,13 @@ class JackTokenizer(path: String) : Closeable {
 
     enum class Keyword {
         CLASS, METHOD, FUNCTION, CONSTRUCTOR, INT, BOOLEAN, CHAR, VOID, VAR,
-        STATIC, FIELD, LET, DO, IF, ELSE, WHILE, RETURN, TRUE, FALSE, NULL, THIS
+        STATIC, FIELD, LET, DO, IF, ELSE, WHILE, RETURN, TRUE, FALSE, NULL, THIS;
+
+        fun getLower() = name.toLowerCase()
     }
 
     companion object {
-        private val keywords = Keyword.values().map { it.name.toLowerCase() }
+        private val keywords = Keyword.values().map(Keyword::getLower)
         private val symbols: List<Int> = listOf(
             '{', '}', '(', ')', '[', ']', '.', ',', ';',
             '+', '-', '*', '/', '&', '|', '<', '>', '=', '~'
