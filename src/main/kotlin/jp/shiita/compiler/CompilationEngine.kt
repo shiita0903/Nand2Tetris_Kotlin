@@ -30,6 +30,10 @@ class CompilationEngine(
         get() = tokenizer.symbol in unaryOpSymbols
     private val isVoid
         get() = tokenizer.keyword == Keyword.VOID
+    private val isVar
+        get() = tokenizer.keyword == Keyword.VAR
+    private val isElse
+        get() = tokenizer.keyword == Keyword.ELSE
 
     override fun close() {
         tokenizer.close()
@@ -114,7 +118,7 @@ class CompilationEngine(
         writeNonTerminal("subroutineBody") {
             writeSymbol('{') { "'{' ←" }
 
-            while (tokenizer.keyword == Keyword.VAR)
+            while (isVar)
                 compileVarDec()
 
             compileStatements()
@@ -191,7 +195,7 @@ class CompilationEngine(
 
             writeSymbol('}') { "'if' '(' expression ')' '{' statements '}' ←" }
 
-            if (tokenizer.keyword == Keyword.ELSE) {
+            if (isElse) {
                 writeKeyword(Keyword.ELSE) { "'if' '(' expression ')' '{' statements '}' ('else' ← '{' statements '}')?" }
 
                 writeSymbol('{') { "'if' '(' expression ')' '{' statements '}' ('else' '{' ← statements '}')?" }
@@ -205,7 +209,7 @@ class CompilationEngine(
 
     private fun compileWhile() {
         writeNonTerminal("whileStatement") {
-            writeKeyword(Keyword.WHILE) { "'while'←" }
+            writeKeyword(Keyword.WHILE) { "'while' ←" }
 
             writeSymbol('(') { "'while' '(' ←" }
 
@@ -225,6 +229,7 @@ class CompilationEngine(
         writeNonTerminal("doStatement") {
             writeKeyword(Keyword.DO) { "'do' ←" }
 
+            writeIdentifier { "subroutineName | (className | varName)" }
             compileSubroutineCall()
 
             writeSymbol(';') { "'do' subroutineCall ';' ←" }
@@ -272,12 +277,26 @@ class CompilationEngine(
                 isIntConst -> writeIntConst { "integerConstant" }
                 isStringConst -> writeStringConst { "stringConstant" }
                 isKeywordConstant -> writeKeyword(constantKeywords) { "keywordConstant" }
+                tokenizer.symbol == '(' -> {
+                    writeSymbol('(') { "'(' ←" }
+                    compileExpression()
+                    writeSymbol(')') { "'(' expression ')' ←" }
+                }
                 isUnaryOpSymbols -> {
                     writeSymbol(unaryOpSymbols) { "unaryOp" }
                     compileTerm()
                 }
-                // TODO: fix
-                else -> writeIdentifier { "test" }
+                else -> {
+                    writeIdentifier { "varName | subroutineName | (className | varName)" }
+                    when (tokenizer.symbol) {
+                        '(', '.' -> compileSubroutineCall()
+                        '[' -> {
+                            writeSymbol('[') { "varName '[' ←" }
+                            compileExpression()
+                            writeSymbol(']') { "varName '[' expression ']' ←" }
+                        }
+                    }
+                }
             }
         }
     }
@@ -291,8 +310,6 @@ class CompilationEngine(
     }
 
     private fun compileSubroutineCall() {
-        writeIdentifier { "subroutineName | (className | varName) ←" }
-
         if (tokenizer.symbol == '.') {
             writeSymbol('.') { "(className | varName) '.' ←" }
             writeIdentifier { "(className | varName) '.' subroutineName ←" }
@@ -336,12 +353,12 @@ class CompilationEngine(
 
     private fun writeSymbol(expectedSymbol: Char, errorMessage: () -> Any) {
         check(tokenizer.symbol == expectedSymbol, errorMessage)
-        writeTerminal("symbol", expectedSymbol.toString())
+        writeTerminal("symbol", escapeMap.getOrElse(tokenizer.symbol!!) { tokenizer.symbol.toString() })
     }
 
     private fun writeSymbol(expectedSymbols: List<Char>, errorMessage: () -> Any) {
         check(tokenizer.symbol in expectedSymbols, errorMessage)
-        writeTerminal("symbol", tokenizer.symbol!!.toString())
+        writeTerminal("symbol", escapeMap.getOrElse(tokenizer.symbol!!) { tokenizer.symbol.toString() })
     }
 
     private fun writeIdentifier(errorMessage: () -> Any) {
@@ -366,5 +383,10 @@ class CompilationEngine(
         private val constantKeywords = listOf(Keyword.TRUE, Keyword.FALSE, Keyword.NULL, Keyword.THIS)
         private val opSymbols = listOf('+', '-', '*', '/', '&', '|', '<', '>', '=')
         private val unaryOpSymbols = listOf('-', '~')
+        private val escapeMap = mapOf(
+            '<' to "&lt;",
+            '>' to "&gt;",
+            '&' to "&amp;"
+        )
     }
 }

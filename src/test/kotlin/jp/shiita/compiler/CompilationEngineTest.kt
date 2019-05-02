@@ -17,17 +17,47 @@ object CompilationEngineSpec : Spek({
                 val cmpFile = File("${jackFile.path.substringBeforeLast(".")}_cmp.xml")
                 val parsedFile = File("${jackFile.path.substringBeforeLast(".")}.xml")
 
-                context("when ${jackFile.name} is tokenized") {
+                context("when ${jackFile.name} is parsed") {
                     before {
                         val tokenizer = JackTokenizer(jackFile.path)
                         CompilationEngine(tokenizer, parsedFile.path).use { it.compile() }
                     }
 
                     it("should equal ${cmpFile.name}") {
-                        val tokenized = parsedFile.readLines()
+                        val parsed = parsedFile.readLines()
                         val cmp = cmpFile.readLines()
 
-                        assertEquals(tokenized, cmp)
+                        assertEquals(parsed, cmp)
+                    }
+
+                    after { parsedFile.delete() }
+                }
+            }
+    }
+
+    describe("CompilationEngine#compile(with expression)") {
+        listOf(
+            "ArrayTest/Main.jack",
+            "Square/Main.jack",
+            "Square/Square.jack",
+            "Square/SquareGame.jack"
+        )
+            .map { File("src/test/resources/compiler/$it") }
+            .forEach { jackFile ->
+                val cmpFile = File("${jackFile.path.substringBeforeLast(".")}_cmp.xml")
+                val parsedFile = File("${jackFile.path.substringBeforeLast(".")}.xml")
+
+                context("when ${jackFile.name} is parsed") {
+                    before {
+                        val tokenizer = JackTokenizer(jackFile.path)
+                        CompilationEngine(tokenizer, parsedFile.path).use { it.compile() }
+                    }
+
+                    it("should equal ${cmpFile.name}") {
+                        val parsed = parsedFile.readLines()
+                        val cmp = cmpFile.readLines()
+
+                        assertEquals(parsed, cmp)
                     }
 
                     after { parsedFile.delete() }
