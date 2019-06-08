@@ -19,7 +19,11 @@ class VMTranslator(private val parsers: List<Parser>, private val writer: CodeWr
                 parser.advance()
                 when (parser.commandType) {
                     Parser.CommandType.ARITHMETIC -> writer.writeArithmetic(parser.arg1!!)
-                    Parser.CommandType.PUSH, Parser.CommandType.POP -> writer.writePushPop(parser.commandType, parser.arg1!!, parser.arg2!!)
+                    Parser.CommandType.PUSH, Parser.CommandType.POP -> writer.writePushPop(
+                        parser.commandType,
+                        parser.arg1!!,
+                        parser.arg2!!
+                    )
                     Parser.CommandType.LABEL -> writer.writeLabel(parser.arg1!!)
                     Parser.CommandType.GOTO -> writer.writeGoto(parser.arg1!!)
                     Parser.CommandType.IF -> writer.writeIf(parser.arg1!!)

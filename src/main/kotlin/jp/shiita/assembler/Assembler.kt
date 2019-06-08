@@ -7,9 +7,9 @@ import java.io.File
 import java.io.FileWriter
 
 class Assembler(
-        private val parser: Parser,
-        private val writer: BufferedWriter,
-        private val printInfo: Boolean
+    private val parser: Parser,
+    private val writer: BufferedWriter,
+    private val printInfo: Boolean
 ) : Closeable {
 
     override fun close() {

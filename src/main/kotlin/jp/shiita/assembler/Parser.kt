@@ -26,13 +26,13 @@ class Parser(private val path: String, printSymbolTable: Boolean = false) : Clos
     private var makeSymbolTableMode = true
 
     private val symbolTable = mutableMapOf(
-            "SP" to 0,
-            "LCL" to 1,
-            "ARG" to 2,
-            "THIS" to 3,
-            "THAT" to 4,
-            "SCREEN" to 16384,
-            "KBD" to 24576
+        "SP" to 0,
+        "LCL" to 1,
+        "ARG" to 2,
+        "THIS" to 3,
+        "THAT" to 4,
+        "SCREEN" to 16384,
+        "KBD" to 24576
     ).apply {
         val registers = (0..15).map { "R$it" to it }
         putAll(registers)
@@ -63,8 +63,8 @@ class Parser(private val path: String, printSymbolTable: Boolean = false) : Clos
                 if (!makeSymbolTableMode) {
                     val t = token.drop(1)
                     runCatching { t.toInt() }
-                            .onSuccess { symbol = it }
-                            .onFailure { symbol = symbolTable.getOrPut(t) { ramAddress++ } }
+                        .onSuccess { symbol = it }
+                        .onFailure { symbol = symbolTable.getOrPut(t) { ramAddress++ } }
                 }
             }
             CommandType.C -> {
@@ -106,8 +106,8 @@ class Parser(private val path: String, printSymbolTable: Boolean = false) : Clos
             wordChars('a'.toInt(), 'z'.toInt())
             wordChars('A'.toInt(), 'Z'.toInt())
             listOf('@', '=', '+', '-', '!', '&', '|', ';', '(', ')', '_', '.', '$', ':')
-                    .map(Char::toInt)
-                    .forEach { c -> wordChars(c, c) }
+                .map(Char::toInt)
+                .forEach { c -> wordChars(c, c) }
             slashSlashComments(true)
         }
     }

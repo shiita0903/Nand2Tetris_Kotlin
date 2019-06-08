@@ -19,8 +19,8 @@ class Parser(path: String) : Closeable {
     private var reader = FileReader(path)
     private val tokenizer = StreamTokenizer(reader).apply {
         listOf('_', ':')
-                .map(Char::toInt)
-                .forEach { c -> wordChars(c, c) }
+            .map(Char::toInt)
+            .forEach { c -> wordChars(c, c) }
     }
 
     init {
