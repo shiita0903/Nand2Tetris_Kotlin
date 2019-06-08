@@ -6,62 +6,38 @@ import org.spekframework.spek2.style.specification.describe
 import java.io.File
 
 object CompilationEngineSpec : Spek({
-    describe("CompilationEngine#compile(without expression)") {
-        listOf(
-            "ExpressionLessSquare/Main.jack",
-            "ExpressionLessSquare/Square.jack",
-            "ExpressionLessSquare/SquareGame.jack"
-        )
-            .map { File("src/test/resources/compiler/$it") }
-            .forEach { jackFile ->
-                val cmpFile = File("${jackFile.path.substringBeforeLast(".")}_cmp.xml")
-                val parsedFile = File("${jackFile.path.substringBeforeLast(".")}.xml")
+    listOf(
+        "Average",
+        "ComplexArrays",
+        "ConvertToBin",
+        "Pong",
+        "Seven",
+        "Square"
+    ).forEach { dirName ->
+        describe("CompilationEngine#compile $dirName") {
+            File("src/test/resources/compiler/$dirName")
+                .listFiles { f -> f.extension == "jack" }.toList()
+                .forEach { jackFile ->
+                    val cmpFile = File("${jackFile.path.substringBeforeLast(".")}_cmp.vm")
+                    val compiledFile = File("${jackFile.path.substringBeforeLast(".")}.vm")
 
-                context("when ${jackFile.name} is parsed") {
-                    before {
-                        val tokenizer = JackTokenizer(jackFile.path)
-                        CompilationEngine(tokenizer, parsedFile.path).use { it.compile() }
+                    context("when ${jackFile.name} is compiled") {
+                        before {
+                            val tokenizer = JackTokenizer(jackFile.path)
+                            val writer = VMWriter(compiledFile.path)
+                            CompilationEngine(tokenizer, writer).use { it.compile() }
+                        }
+
+                        it("should equal ${cmpFile.name}") {
+                            val compiled = compiledFile.readLines()
+                            val cmp = cmpFile.readLines()
+
+                            assertEquals(compiled, cmp)
+                        }
+
+                        after { compiledFile.delete() }
                     }
-
-                    it("should equal ${cmpFile.name}") {
-                        val parsed = parsedFile.readLines()
-                        val cmp = cmpFile.readLines()
-
-                        assertEquals(parsed, cmp)
-                    }
-
-                    after { parsedFile.delete() }
                 }
-            }
-    }
-
-    describe("CompilationEngine#compile(with expression)") {
-        listOf(
-            "ArrayTest/Main.jack",
-            "Square/Main.jack",
-            "Square/Square.jack",
-            "Square/SquareGame.jack"
-        )
-            .map { File("src/test/resources/compiler/$it") }
-            .forEach { jackFile ->
-                val cmpFile = File("${jackFile.path.substringBeforeLast(".")}_cmp.xml")
-                val parsedFile = File("${jackFile.path.substringBeforeLast(".")}.xml")
-
-                context("when ${jackFile.name} is parsed") {
-                    before {
-                        val tokenizer = JackTokenizer(jackFile.path)
-                        CompilationEngine(tokenizer, parsedFile.path).use { it.compile() }
-                    }
-
-                    it("should equal ${cmpFile.name}") {
-                        val parsed = parsedFile.readLines()
-                        val cmp = cmpFile.readLines()
-
-                        assertEquals(parsed, cmp)
-                    }
-
-                    after { parsedFile.delete() }
-                }
-            }
+        }
     }
 })
