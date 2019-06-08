@@ -95,7 +95,7 @@ class CompilationEngine(
             symbolTable.define("this", className, SymbolTable.Kind.ARGUMENT)
         }
 
-        val returnType = checkType(void = true)
+        checkType(void = true)
 
         val subroutineName =
             checkIdentifier { "('constructor' | 'function' | 'method') ('void' | type) subroutineName ←" }
@@ -106,7 +106,7 @@ class CompilationEngine(
 
         checkSymbol(')') { "('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' parameterList ')' ←" }
 
-        compileSubroutineBody(subroutineType, returnType, subroutineName)
+        compileSubroutineBody(subroutineType, subroutineName)
     }
 
     private fun compileParameterList() {
@@ -126,7 +126,7 @@ class CompilationEngine(
         symbolTable.define(varName, type, SymbolTable.Kind.ARGUMENT)
     }
 
-    private fun compileSubroutineBody(subroutineType: Keyword, returnType: String, subroutineName: String) {
+    private fun compileSubroutineBody(subroutineType: Keyword, subroutineName: String) {
         checkSymbol('{') { "'{' ←" }
 
         val localCount = sequence {
@@ -146,6 +146,8 @@ class CompilationEngine(
                 // setup this segment
                 writer.writePush(VMWriter.Segment.ARGUMENT, 0)
                 writer.writePop(VMWriter.Segment.POINTER, 0)
+            }
+            else -> {
             }
         }
 

@@ -11,8 +11,6 @@ class JackTokenizer(path: String) : Closeable {
         get() = tokenizer.ttype != StreamTokenizer.TT_EOF
     var keyword: Keyword? = null
         private set
-    val keywordStr: String?
-        get() = keyword?.getLower()
     var symbol: Char? = null
         private set
     var identifier: String? = null
