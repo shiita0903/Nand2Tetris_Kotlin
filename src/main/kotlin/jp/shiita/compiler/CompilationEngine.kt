@@ -91,6 +91,9 @@ class CompilationEngine(
         symbolTable.startSubroutine()
 
         val subroutineType = checkKeyword(subroutineDecKeywords) { "('constructor' | 'function' | 'method') ←" }
+        if (subroutineType == Keyword.METHOD) {
+            symbolTable.define("this", className, SymbolTable.Kind.ARGUMENT)
+        }
 
         val returnType = checkType(void = true)
 
@@ -190,17 +193,28 @@ class CompilationEngine(
         val kind = symbolTable.kindOf(varName)
         val segment = kindToSegment(kind) { "not defined symbol : \"$varName\"" }
 
-        // TODO: あとで対応
-//        if (tokenizer.symbol == '[') {
-//            writeSymbol('[') { "'let' varName ('[' ← expression ']')?" }
-//            compileExpression()
-//            writeSymbol(']') { "'let' varName ('[' expression ']' ←)?" }
-//        }
+        val isArray = tokenizer.symbol == '['
+        if (isArray) {
+            checkSymbol('[') { "'let' varName ('[' ← expression ']')?" }
+            compileExpression()
+            checkSymbol(']') { "'let' varName ('[' expression ']' ←)?" }
+
+            writer.writePush(segment, index)
+            writer.writeArithmetic(VMWriter.Command.ADD)
+        }
 
         checkSymbol('=') { "'let' varName ('[' expression ']')? '=' ←" }
 
         compileExpression()
-        writer.writePop(segment, index)
+
+        if (isArray) {
+            writer.writePop(VMWriter.Segment.TEMP, 0)
+            writer.writePop(VMWriter.Segment.POINTER, 1)
+            writer.writePush(VMWriter.Segment.TEMP, 0)
+            writer.writePop(VMWriter.Segment.THAT, 0)
+        } else {
+            writer.writePop(segment, index)
+        }
 
         checkSymbol(';') { "'let' varName ('[' expression ']')? '=' expression ';' ←" }
     }
@@ -332,7 +346,13 @@ class CompilationEngine(
                 writer.writePush(VMWriter.Segment.CONSTANT, intVal)
             }
             isStringConst -> {
-                // TODO: あとで対応 writeStringConst { "stringConstant" }
+                val stringVal = checkStringConst { "stringConstant" }
+                writer.writePush(VMWriter.Segment.CONSTANT, stringVal.length)
+                writer.writeCall("String.new", 1)
+                stringVal.forEach { c ->
+                    writer.writePush(VMWriter.Segment.CONSTANT, c.toInt())
+                    writer.writeCall("String.appendChar", 2)    // String object is already pushed
+                }
             }
             isKeywordConstant -> {
                 when (tokenizer.keyword) {
@@ -361,17 +381,25 @@ class CompilationEngine(
                 val name = checkIdentifier { "varName | subroutineName | className" }
                 when (tokenizer.symbol) {
                     '(', '.' -> compileSubroutineCall(name)
-                    // TODO: あとで対応
-//                '[' -> {
-//                    writeSymbol('[') { "varName '[' ←" }
-//                    compileExpression()
-//                    writeSymbol(']') { "varName '[' expression ']' ←" }
-//                }
                     else -> {
+                        val isArray = tokenizer.symbol == '['
+
+                        if (isArray) {
+                            checkSymbol('[') { "varName '[' ←" }
+                            compileExpression()
+                            checkSymbol(']') { "varName '[' expression ']' ←" }
+                        }
+
                         val kind = symbolTable.kindOf(name)
                         val index = symbolTable.indexOf(name)
                         val segment = kindToSegment(kind) { "not defined symbol : \"$name\"" }
                         writer.writePush(segment, index)
+
+                        if (isArray) {
+                            writer.writeArithmetic(VMWriter.Command.ADD)
+                            writer.writePop(VMWriter.Segment.POINTER, 1)
+                            writer.writePush(VMWriter.Segment.THAT, 0)
+                        }
                     }
                 }
             }
