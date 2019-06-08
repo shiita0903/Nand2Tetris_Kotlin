@@ -7,13 +7,13 @@ class JackAnalyzer {
     fun analyze(file: File) {
         if (file.isFile) {
             if (file.extension == "jack") {
-                parse(file)
+                compile(file)
                 return
             }
         } else {
             val jackFiles = file.listFiles { f -> f.extension == "jack" }
             if (!jackFiles.isNullOrEmpty()) {
-                jackFiles.forEach(::parse)
+                jackFiles.forEach(::compile)
                 return
             }
         }
@@ -21,12 +21,13 @@ class JackAnalyzer {
         println(".jack file is not found")
     }
 
-    private fun parse(file: File) {
+    private fun compile(file: File) {
         val tokenizer = JackTokenizer(file.path)
-        val xmlPath = "${file.path.substringBeforeLast(".")}.xml"
+        val vmPath = "${file.path.substringBeforeLast(".")}.vm"
+        val writer = VMWriter(vmPath)
 
-        CompilationEngine(tokenizer, xmlPath).use { it.compile() }
-        println("parse is finished : [${file.path}]")
+        CompilationEngine(tokenizer, writer).use { it.compile() }
+        println("compile is finished : [${file.path}]")
     }
 }
 

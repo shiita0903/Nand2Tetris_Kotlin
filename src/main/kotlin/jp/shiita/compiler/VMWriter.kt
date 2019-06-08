@@ -15,7 +15,7 @@ class VMWriter(path: String) : Closeable {
 
     fun writeArithmetic(command: Command) = writeln(command.name.toLowerCase())
 
-    fun writeLable(label: String) = writeln("label $label")
+    fun writeLabel(label: String) = writeln("label $label")
 
     fun writeGoto(label: String) = writeln("goto $label")
 
@@ -32,7 +32,19 @@ class VMWriter(path: String) : Closeable {
         writer.newLine()
     }
 
-    enum class Segment { CONST, ARG, LOCAL, STATIC, THIS, THAT, POINTER, TEMP }
+    enum class Segment { CONSTANT, ARGUMENT, LOCAL, STATIC, THIS, THAT, POINTER, TEMP }
 
     enum class Command { ADD, SUB, NEG, EQ, GT, LT, AND, OR, NOT }
+
+    companion object {
+        val opCommandMap = mapOf(
+            '+' to Command.ADD,
+            '-' to Command.SUB,
+            '=' to Command.EQ,
+            '>' to Command.GT,
+            '<' to Command.LT,
+            '&' to Command.AND,
+            '|' to Command.OR
+        )
+    }
 }

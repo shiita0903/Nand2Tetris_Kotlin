@@ -1,7 +1,7 @@
 // This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
-// File name: projects/10/Square/SquareGame.jack
+// File name: projects/11/Square/SquareGame.jack
 
 // (same as projects/09/Square/SquareGame.jack)
 
@@ -52,7 +52,7 @@ class SquareGame {
       var char key;  // the key currently pressed by the user
       var boolean exit;
       let exit = false;
-      
+
       while (~exit) {
          // waits for a key to be pressed
          while (key = 0) {

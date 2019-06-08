@@ -2,16 +2,17 @@ package jp.shiita.compiler
 
 import jp.shiita.compiler.JackTokenizer.Keyword
 import jp.shiita.compiler.JackTokenizer.TokenType
-import java.io.BufferedWriter
 import java.io.Closeable
-import java.io.FileWriter
 
 class CompilationEngine(
     private val tokenizer: JackTokenizer,
-    path: String
+    private val writer: VMWriter
 ) : Closeable {
-    private val writer = BufferedWriter(FileWriter(path))
-    private var indentNum = 0
+    private val symbolTable = SymbolTable()
+    private lateinit var className: String
+    private var ifCount = 0
+    private var whileCount = 0
+
     private val isIdentifier
         get() = tokenizer.tokenType == TokenType.IDENTIFIER
     private val isIntConst
@@ -46,334 +47,433 @@ class CompilationEngine(
     }
 
     private fun compileClass() {
-        writeNonTerminal("class") {
-            writeKeyword(Keyword.CLASS) { "'class' ←" }
+        checkKeyword(Keyword.CLASS) { "'class' ←" }
 
-            writeIdentifier { "'class' className ←" }
+        className = checkIdentifier { "'class' className ←" }
 
-            writeSymbol('{') { "'class' className '{' ←" }
+        checkSymbol('{') { "'class' className '{' ←" }
 
-            while (isClassVarDec)
-                compileClassVarDec()
+        while (isClassVarDec)
+            compileClassVarDec()
 
-            while (isSubroutineDec)
-                compileSubroutine()
+        while (isSubroutineDec)
+            compileSubroutine()
 
-            writeSymbol('}') { "'class' className '{' classVarDec* subroutineDec* '}' ←" }
-        }
+        checkSymbol('}') { "'class' className '{' classVarDec* subroutineDec* '}' ←" }
     }
 
     private fun compileClassVarDec() {
-        writeNonTerminal("classVarDec") {
-            writeKeyword(classVarDecKeywords) { "('static' | 'field') ←" }
+        val isStatic = checkKeyword(classVarDecKeywords) { "('static' | 'field') ←" } == Keyword.STATIC
 
-            compileType(void = false)
+        val type = checkType(void = false)
 
-            writeIdentifier { "('static' | 'field') type varName ←" }
+        val varNames = mutableListOf(checkIdentifier { "('static' | 'field') type varName ←" })
 
-            while (tokenizer.symbol == ',') {
-                writeSymbol(',') { "('static' | 'field') type varName (',' varName ←)*" }
-                writeIdentifier { "('static' | 'field') type varName (',' ← varName)*" }
-            }
+        while (tokenizer.symbol == ',') {
+            checkSymbol(',') { "('static' | 'field') type varName (',' ← varName)*" }
+            varNames.add(checkIdentifier { "('static' | 'field') type varName (',' varName ←)*" })
+        }
 
-            writeSymbol(';') { "('static' | 'field') type varName (',' varName)* ';' ←" }
+        checkSymbol(';') { "('static' | 'field') type varName (',' varName)* ';' ←" }
+
+        varNames.forEach { name ->
+            symbolTable.define(
+                name,
+                type,
+                if (isStatic) SymbolTable.Kind.STATIC else SymbolTable.Kind.FIELD
+            )
         }
     }
 
     private fun compileSubroutine() {
-        writeNonTerminal("subroutineDec") {
-            writeKeyword(subroutineDecKeywords) { "('constructor' | 'function' | 'method') ←" }
+        ifCount = 0
+        whileCount = 0
+        symbolTable.startSubroutine()
 
-            compileType(void = true)
+        val subroutineType = checkKeyword(subroutineDecKeywords) { "('constructor' | 'function' | 'method') ←" }
 
-            writeIdentifier { "('constructor' | 'function' | 'method') ('void' | type) subroutineName ←" }
+        val returnType = checkType(void = true)
 
-            writeSymbol('(') { "('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' ←" }
+        val subroutineName =
+            checkIdentifier { "('constructor' | 'function' | 'method') ('void' | type) subroutineName ←" }
 
-            compileParameterList()
+        checkSymbol('(') { "('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' ←" }
 
-            writeSymbol(')') { "('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' parameterList ')' ←" }
+        compileParameterList()
 
-            compileSubroutineBody()
-        }
+        checkSymbol(')') { "('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' parameterList ')' ←" }
+
+        compileSubroutineBody(subroutineType, returnType, subroutineName)
     }
 
     private fun compileParameterList() {
-        writeNonTerminal("parameterList") {
-            if (isBuiltInType || isIdentifier) {
-                compileType(void = false)
-
-                writeIdentifier { "type varName ←" }
-
-                while (tokenizer.symbol == ',') {
-                    writeSymbol(',') { "type varName (',' ← type varName)*" }
-                    compileType(void = false)
-                    writeIdentifier { "type varName (',' type varName ←)*" }
-                }
-            }
-        }
-    }
-
-    private fun compileSubroutineBody() {
-        writeNonTerminal("subroutineBody") {
-            writeSymbol('{') { "'{' ←" }
-
-            while (isVar)
-                compileVarDec()
-
-            compileStatements()
-
-            writeSymbol('}') { "'{' varDec* statements '}' ←" }
-        }
-    }
-
-    private fun compileVarDec() {
-        writeNonTerminal("varDec") {
-            writeKeyword(Keyword.VAR) { "'var' ←" }
-
-            compileType(void = false)
-
-            writeIdentifier { "'var' type varName ←" }
+        if (isBuiltInType || isIdentifier) {
+            compileParameter()
 
             while (tokenizer.symbol == ',') {
-                writeSymbol(',') { "'var' type varName (',' ← varName)*" }
-                writeIdentifier { "'var' type varName (',' varName ←)*" }
+                checkSymbol(',') { "type varName (',' ← type varName)*" }
+                compileParameter()
             }
-
-            writeSymbol(';') { "'var' type varName (',' varName)* ';' ←" }
         }
+    }
+
+    private fun compileParameter() {
+        val type = checkType(void = false)
+        val varName = checkIdentifier { "type varName ←" }
+        symbolTable.define(varName, type, SymbolTable.Kind.ARGUMENT)
+    }
+
+    private fun compileSubroutineBody(subroutineType: Keyword, returnType: String, subroutineName: String) {
+        checkSymbol('{') { "'{' ←" }
+
+        val localCount = sequence {
+            while (isVar)
+                yield(compileVarDec())
+        }.sum()
+        writer.writeFunction("$className.$subroutineName", localCount)
+
+        when (subroutineType) {
+            Keyword.CONSTRUCTOR -> {
+                // memory allocation for itself
+                writer.writePush(VMWriter.Segment.CONSTANT, symbolTable.variableCount(SymbolTable.Kind.FIELD))
+                writer.writeCall("Memory.alloc", 1)
+                writer.writePop(VMWriter.Segment.POINTER, 0)
+            }
+            Keyword.METHOD -> {
+                // setup this segment
+                writer.writePush(VMWriter.Segment.ARGUMENT, 0)
+                writer.writePop(VMWriter.Segment.POINTER, 0)
+            }
+        }
+
+        compileStatements()
+
+        checkSymbol('}') { "'{' varDec* statements '}' ←" }
+    }
+
+    private fun compileVarDec(): Int {
+        checkKeyword(Keyword.VAR) { "'var' ←" }
+
+        val type = checkType(void = false)
+
+        val varNames = mutableListOf(checkIdentifier { "'var' type varName ←" })
+
+        while (tokenizer.symbol == ',') {
+            checkSymbol(',') { "'var' type varName (',' ← varName)*" }
+            varNames.add(checkIdentifier { "'var' type varName (',' varName ←)*" })
+        }
+
+        checkSymbol(';') { "'var' type varName (',' varName)* ';' ←" }
+
+        varNames.forEach { name -> symbolTable.define(name, type, SymbolTable.Kind.VAR) }
+        return varNames.size
     }
 
     private fun compileStatements() {
-        writeNonTerminal("statements") {
-            loop@ while (true) {
-                when (tokenizer.keyword) {
-                    Keyword.LET -> compileLet()
-                    Keyword.IF -> compileIf()
-                    Keyword.WHILE -> compileWhile()
-                    Keyword.DO -> compileDo()
-                    Keyword.RETURN -> compileReturn()
-                    else -> break@loop
-                }
+        while (true) {
+            when (tokenizer.keyword) {
+                Keyword.LET -> compileLet()
+                Keyword.IF -> compileIf()
+                Keyword.WHILE -> compileWhile()
+                Keyword.DO -> compileDo()
+                Keyword.RETURN -> compileReturn()
+                else -> return
             }
         }
     }
 
     private fun compileLet() {
-        writeNonTerminal("letStatement") {
-            writeKeyword(Keyword.LET) { "'let' ←" }
+        checkKeyword(Keyword.LET) { "'let' ←" }
 
-            writeIdentifier { "'let' varName ←" }
+        val varName = checkIdentifier { "'let' varName ←" }
+        val index = symbolTable.indexOf(varName)
+        val kind = symbolTable.kindOf(varName)
+        val segment = kindToSegment(kind) { "not defined symbol : \"$varName\"" }
 
-            if (tokenizer.symbol == '[') {
-                writeSymbol('[') { "'let' varName ('[' ← expression ']')?" }
-                compileExpression()
-                writeSymbol(']') { "'let' varName ('[' expression ']' ←)?" }
-            }
+        // TODO: あとで対応
+//        if (tokenizer.symbol == '[') {
+//            writeSymbol('[') { "'let' varName ('[' ← expression ']')?" }
+//            compileExpression()
+//            writeSymbol(']') { "'let' varName ('[' expression ']' ←)?" }
+//        }
 
-            writeSymbol('=') { "'let' varName ('[' expression ']')? '=' ←" }
+        checkSymbol('=') { "'let' varName ('[' expression ']')? '=' ←" }
 
-            compileExpression()
+        compileExpression()
+        writer.writePop(segment, index)
 
-            writeSymbol(';') { "'let' varName ('[' expression ']')? '=' expression ';' ←" }
-        }
+        checkSymbol(';') { "'let' varName ('[' expression ']')? '=' expression ';' ←" }
     }
 
     private fun compileIf() {
-        writeNonTerminal("ifStatement") {
-            writeKeyword(Keyword.IF) { "'if' ←" }
+        val trueLabel = "IF_TRUE$ifCount"
+        val falseLabel = "IF_FALSE$ifCount"
+        val endLabel = "IF_END$ifCount"
+        ifCount++
 
-            writeSymbol('(') { "'if' '(' ←" }
+        checkKeyword(Keyword.IF) { "'if' ←" }
 
-            compileExpression()
+        checkSymbol('(') { "'if' '(' ←" }
 
-            writeSymbol(')') { "'if' '(' expression ')' ←" }
+        compileExpression()
+        writer.writeIf(trueLabel)
+        writer.writeGoto(falseLabel)
+        writer.writeLabel(trueLabel)
 
-            writeSymbol('{') { "'if' '(' expression ')' '{' ←" }
+        checkSymbol(')') { "'if' '(' expression ')' ←" }
+
+        checkSymbol('{') { "'if' '(' expression ')' '{' ←" }
+
+        compileStatements()
+
+        checkSymbol('}') { "'if' '(' expression ')' '{' statements '}' ←" }
+
+        if (isElse) {
+            writer.writeGoto(endLabel)
+            writer.writeLabel(falseLabel)
+
+            checkKeyword(Keyword.ELSE) { "'if' '(' expression ')' '{' statements '}' ('else' ← '{' statements '}')?" }
+
+            checkSymbol('{') { "'if' '(' expression ')' '{' statements '}' ('else' '{' ← statements '}')?" }
 
             compileStatements()
 
-            writeSymbol('}') { "'if' '(' expression ')' '{' statements '}' ←" }
+            checkSymbol('}') { "'if' '(' expression ')' '{' statements '}' ('else' '{' statements '}' ←)?" }
 
-            if (isElse) {
-                writeKeyword(Keyword.ELSE) { "'if' '(' expression ')' '{' statements '}' ('else' ← '{' statements '}')?" }
-
-                writeSymbol('{') { "'if' '(' expression ')' '{' statements '}' ('else' '{' ← statements '}')?" }
-
-                compileStatements()
-
-                writeSymbol('}') { "'if' '(' expression ')' '{' statements '}' ('else' '{' statements '}' ←)?" }
-            }
+            writer.writeLabel(endLabel)
+        } else {
+            writer.writeLabel(falseLabel)
         }
     }
 
     private fun compileWhile() {
-        writeNonTerminal("whileStatement") {
-            writeKeyword(Keyword.WHILE) { "'while' ←" }
+        val expLabel = "WHILE_EXP$whileCount"
+        val endLabel = "WHILE_END$whileCount"
+        whileCount++
 
-            writeSymbol('(') { "'while' '(' ←" }
+        checkKeyword(Keyword.WHILE) { "'while' ←" }
 
-            compileExpression()
+        checkSymbol('(') { "'while' '(' ←" }
 
-            writeSymbol(')') { "'while' '(' expression ')' ←" }
+        writer.writeLabel(expLabel)
+        compileExpression()
+        writer.writeArithmetic(VMWriter.Command.NOT)
+        writer.writeIf(endLabel)
 
-            writeSymbol('{') { "'while' '(' expression ')' '{' ←" }
+        checkSymbol(')') { "'while' '(' expression ')' ←" }
 
-            compileStatements()
+        checkSymbol('{') { "'while' '(' expression ')' '{' ←" }
 
-            writeSymbol('}') { "'while' '(' expression ')' '{' statements '}' ←" }
-        }
+        compileStatements()
+        writer.writeGoto(expLabel)
+        writer.writeLabel(endLabel)
+
+        checkSymbol('}') { "'while' '(' expression ')' '{' statements '}' ←" }
     }
 
     private fun compileDo() {
-        writeNonTerminal("doStatement") {
-            writeKeyword(Keyword.DO) { "'do' ←" }
+        checkKeyword(Keyword.DO) { "'do' ←" }
 
-            writeIdentifier { "subroutineName | (className | varName)" }
-            compileSubroutineCall()
+        val name = checkIdentifier { "subroutineName | className | varName" }
+        compileSubroutineCall(name)
+        writer.writePop(VMWriter.Segment.TEMP, 0)
 
-            writeSymbol(';') { "'do' subroutineCall ';' ←" }
-        }
+        checkSymbol(';') { "'do' subroutineCall ';' ←" }
     }
 
     private fun compileReturn() {
-        writeNonTerminal("returnStatement") {
-            writeKeyword(Keyword.RETURN) { "'return' ←" }
+        checkKeyword(Keyword.RETURN) { "'return' ←" }
 
-            if (tokenizer.symbol != ';')
-                compileExpression()
+        if (tokenizer.symbol != ';') compileExpression()
+        else writer.writePush(VMWriter.Segment.CONSTANT, 0)
+        writer.writeReturn()
 
-            writeSymbol(';') { "'return' expression? ';' ←" }
-        }
+        checkSymbol(';') { "'return' expression? ';' ←" }
     }
 
     private fun compileExpression() {
-        writeNonTerminal("expression") {
+        compileTerm()
+
+        while (tokenizer.symbol in opSymbols) {
+            val op = checkSymbol(opSymbols) { "term (op ← term)*" }
+            val command = VMWriter.opCommandMap[op]
+
             compileTerm()
 
-            while (tokenizer.symbol in opSymbols) {
-                writeSymbol(opSymbols) { "term (op ← term)*" }
-                compileTerm()
+            when {
+                command != null -> writer.writeArithmetic(command)
+                op == '*' -> writer.writeCall("Math.multiply", 2)
+                op == '/' -> writer.writeCall("Math.divide", 2)
             }
         }
     }
 
-    private fun compileExpressionList() {
-        writeNonTerminal("expressionList") {
-            if (tokenizer.symbol != ')') {
-                compileExpression()
+    private fun compileExpressionList(): Int {
+        var argCount = 0
 
-                while (tokenizer.symbol == ',') {
-                    writeSymbol(',') { "(expression (',' ← expression)*)?" }
-                    compileExpression()
-                }
+        if (tokenizer.symbol != ')') {
+            argCount++
+            compileExpression()
+
+            while (tokenizer.symbol == ',') {
+                checkSymbol(',') { "(expression (',' ← expression)*)?" }
+                argCount++
+                compileExpression()
             }
         }
+
+        return argCount
     }
 
     private fun compileTerm() {
-        writeNonTerminal("term") {
-            when {
-                isIntConst -> writeIntConst { "integerConstant" }
-                isStringConst -> writeStringConst { "stringConstant" }
-                isKeywordConstant -> writeKeyword(constantKeywords) { "keywordConstant" }
-                tokenizer.symbol == '(' -> {
-                    writeSymbol('(') { "'(' ←" }
-                    compileExpression()
-                    writeSymbol(')') { "'(' expression ')' ←" }
+        when {
+            isIntConst -> {
+                val intVal = checkIntConst { "integerConstant" }
+                writer.writePush(VMWriter.Segment.CONSTANT, intVal)
+            }
+            isStringConst -> {
+                // TODO: あとで対応 writeStringConst { "stringConstant" }
+            }
+            isKeywordConstant -> {
+                when (tokenizer.keyword) {
+                    Keyword.TRUE -> {
+                        writer.writePush(VMWriter.Segment.CONSTANT, 0)
+                        writer.writeArithmetic(VMWriter.Command.NOT)
+                    }
+                    Keyword.FALSE -> writer.writePush(VMWriter.Segment.CONSTANT, 0)
+                    Keyword.NULL -> writer.writePush(VMWriter.Segment.CONSTANT, 0)
+                    Keyword.THIS -> writer.writePush(VMWriter.Segment.POINTER, 0)
+                    else -> error("invalid Keyword \"${tokenizer.keyword}\"")
                 }
-                isUnaryOpSymbols -> {
-                    writeSymbol(unaryOpSymbols) { "unaryOp" }
-                    compileTerm()
-                }
-                else -> {
-                    writeIdentifier { "varName | subroutineName | (className | varName)" }
-                    when (tokenizer.symbol) {
-                        '(', '.' -> compileSubroutineCall()
-                        '[' -> {
-                            writeSymbol('[') { "varName '[' ←" }
-                            compileExpression()
-                            writeSymbol(']') { "varName '[' expression ']' ←" }
-                        }
+                tokenizer.advance()
+            }
+            tokenizer.symbol == '(' -> {
+                checkSymbol('(') { "'(' ←" }
+                compileExpression()
+                checkSymbol(')') { "'(' expression ')' ←" }
+            }
+            isUnaryOpSymbols -> {
+                val unaryOp = checkSymbol(unaryOpSymbols) { "unaryOp" }
+                compileTerm()
+                writer.writeArithmetic(if (unaryOp == '-') VMWriter.Command.NEG else VMWriter.Command.NOT)
+            }
+            else -> {
+                val name = checkIdentifier { "varName | subroutineName | className" }
+                when (tokenizer.symbol) {
+                    '(', '.' -> compileSubroutineCall(name)
+                    // TODO: あとで対応
+//                '[' -> {
+//                    writeSymbol('[') { "varName '[' ←" }
+//                    compileExpression()
+//                    writeSymbol(']') { "varName '[' expression ']' ←" }
+//                }
+                    else -> {
+                        val kind = symbolTable.kindOf(name)
+                        val index = symbolTable.indexOf(name)
+                        val segment = kindToSegment(kind) { "not defined symbol : \"$name\"" }
+                        writer.writePush(segment, index)
                     }
                 }
             }
         }
     }
 
-    private fun compileType(void: Boolean) {
-        when {
-            isBuiltInType -> writeKeyword(buildInTypeKeywords) { "type error (built in type)" }
-            void && isVoid -> writeKeyword(Keyword.VOID) { "type error (void)" }
-            else -> writeIdentifier { "type error" }
+    private fun compileSubroutineCall(name: String) {
+        var isMethodCall = false
+        val subroutineName = if (tokenizer.symbol == '.') {
+            checkSymbol('.') { "(className | varName) '.' ←" }
+            val identifier = checkIdentifier { "(className | varName) '.' subroutineName ←" }
+
+            if (name[0].isUpperCase()) "$name.$identifier"
+            else {
+                isMethodCall = true
+                "${symbolTable.typeOf(name)}.$identifier"
+            }
+        } else {
+            isMethodCall = true
+            "$className.$name"
         }
-    }
 
-    private fun compileSubroutineCall() {
-        if (tokenizer.symbol == '.') {
-            writeSymbol('.') { "(className | varName) '.' ←" }
-            writeIdentifier { "(className | varName) '.' subroutineName ←" }
+        checkSymbol('(') { "subroutineName '(' ←" }
+
+        val argCount = if (isMethodCall) {
+            val kind = symbolTable.kindOf(name)
+            if (kind == SymbolTable.Kind.NONE) {
+                writer.writePush(VMWriter.Segment.POINTER, 0)
+            } else {
+                val index = symbolTable.indexOf(name)
+                val segment = kindToSegment(kind) { "not defined symbol : \"$name\"" }
+                writer.writePush(segment, index)
+            }
+
+            compileExpressionList() + 1
+        } else {
+            compileExpressionList()
         }
+        writer.writeCall(subroutineName, argCount)
 
-        writeSymbol('(') { "subroutineName '(' ←" }
-
-        compileExpressionList()
-
-        writeSymbol(')') { "subroutineName '(' expressionList ')' ←" }
+        checkSymbol(')') { "subroutineName '(' expressionList ')' ←" }
     }
 
-    private fun writeln(line: String) {
-        writer.write(" ".repeat(indentNum * 2))
-        writer.write(line)
-        writer.newLine()
-    }
-
-    private fun writeTerminal(tag: String, terminal: String) {
-        writeln("<$tag> $terminal </$tag>")
+    private fun checkAdvance(value: Boolean, errorMessage: () -> Any) {
+        check(value, errorMessage)
         tokenizer.advance()
     }
 
-    private fun writeNonTerminal(tag: String, block: () -> Any) {
-        writeln("<$tag>")
-        indentNum++
-        block()
-        indentNum--
-        writeln("</$tag>")
+    private fun checkKeyword(expectedKeyword: Keyword, errorMessage: () -> Any): Keyword {
+        val keyword = tokenizer.keyword
+        checkAdvance(tokenizer.keyword == expectedKeyword, errorMessage)
+        return keyword!!
     }
 
-    private fun writeKeyword(expectedKeyword: Keyword, errorMessage: () -> Any) {
-        check(tokenizer.keyword == expectedKeyword, errorMessage)
-        writeTerminal("keyword", expectedKeyword.getLower())
+    private fun checkKeyword(expectedKeywords: List<Keyword>, errorMessage: () -> Any): Keyword {
+        val keyword = tokenizer.keyword
+        checkAdvance(keyword in expectedKeywords, errorMessage)
+        return keyword!!
     }
 
-    private fun writeKeyword(expectedKeywords: List<Keyword>, errorMessage: () -> Any) {
-        check(tokenizer.keyword in expectedKeywords, errorMessage)
-        writeTerminal("keyword", tokenizer.keyword!!.getLower())
+    private fun checkSymbol(expectedSymbol: Char, errorMessage: () -> Any) =
+        checkAdvance(tokenizer.symbol == expectedSymbol, errorMessage)
+
+    private fun checkSymbol(expectedSymbols: List<Char>, errorMessage: () -> Any): Char {
+        val symbol = tokenizer.symbol
+        checkAdvance(symbol in expectedSymbols, errorMessage)
+        return symbol!!
     }
 
-    private fun writeSymbol(expectedSymbol: Char, errorMessage: () -> Any) {
-        check(tokenizer.symbol == expectedSymbol, errorMessage)
-        writeTerminal("symbol", escapeMap.getOrElse(tokenizer.symbol!!) { tokenizer.symbol.toString() })
+    private fun checkIdentifier(errorMessage: () -> Any): String {
+        val identifier = tokenizer.identifier
+        checkNotNull(identifier, errorMessage)
+        tokenizer.advance()
+        return identifier
     }
 
-    private fun writeSymbol(expectedSymbols: List<Char>, errorMessage: () -> Any) {
-        check(tokenizer.symbol in expectedSymbols, errorMessage)
-        writeTerminal("symbol", escapeMap.getOrElse(tokenizer.symbol!!) { tokenizer.symbol.toString() })
+    private fun checkIntConst(errorMessage: () -> Any): Int {
+        val intVal = tokenizer.intVal
+        checkNotNull(intVal, errorMessage)
+        tokenizer.advance()
+        return intVal
     }
 
-    private fun writeIdentifier(errorMessage: () -> Any) {
-        checkNotNull(tokenizer.identifier, errorMessage)
-        writeTerminal("identifier", tokenizer.identifier!!)
+    private fun checkStringConst(errorMessage: () -> Any): String {
+        val stringVal = tokenizer.stringVal
+        checkNotNull(stringVal, errorMessage)
+        tokenizer.advance()
+        return stringVal
     }
 
-    private fun writeIntConst(errorMessage: () -> Any) {
-        checkNotNull(tokenizer.intVal, errorMessage)
-        writeTerminal("integerConstant", tokenizer.intVal!!.toString())
+    private fun checkType(void: Boolean): String = when {
+        isBuiltInType -> checkKeyword(buildInTypeKeywords) { "type error (built in type)" }.getLower()
+        void && isVoid -> checkKeyword(Keyword.VOID) { "type error (void)" }.getLower()
+        else -> checkIdentifier { "type error" }
     }
 
-    private fun writeStringConst(errorMessage: () -> Any) {
-        checkNotNull(tokenizer.stringVal, errorMessage)
-        writeTerminal("stringConstant", tokenizer.stringVal!!)
+    private fun kindToSegment(kind: SymbolTable.Kind, errorMessage: () -> Any): VMWriter.Segment = when (kind) {
+        SymbolTable.Kind.STATIC -> VMWriter.Segment.STATIC
+        SymbolTable.Kind.FIELD -> VMWriter.Segment.THIS
+        SymbolTable.Kind.ARGUMENT -> VMWriter.Segment.ARGUMENT
+        SymbolTable.Kind.VAR -> VMWriter.Segment.LOCAL
+        else -> error(errorMessage)
     }
 
     companion object {
@@ -383,10 +483,5 @@ class CompilationEngine(
         private val constantKeywords = listOf(Keyword.TRUE, Keyword.FALSE, Keyword.NULL, Keyword.THIS)
         private val opSymbols = listOf('+', '-', '*', '/', '&', '|', '<', '>', '=')
         private val unaryOpSymbols = listOf('-', '~')
-        private val escapeMap = mapOf(
-            '<' to "&lt;",
-            '>' to "&gt;",
-            '&' to "&amp;"
-        )
     }
 }
