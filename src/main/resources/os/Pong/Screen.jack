@@ -6,7 +6,7 @@
 /**
  * A library of functions for displaying graphics on the screen.
  * The Hack physical screen consists of 512 rows (indexed 0..511, top to bottom)
- * of 256 pixels each (indexed 0..255, left to right). The top left pixel on 
+ * of 256 pixels each (indexed 0..255, left to right). The top left pixel on
  * the screen is indexed (0,0).
  */
 class Screen {
@@ -101,11 +101,7 @@ class Screen {
             return;
         }
         if (dy = 0) {
-            let a = x1;
-            while (a < (x2 + 1)) {
-                do Screen.drawPixel(a, y1);
-                let a = a + 1;
-            }
+            do Screen.drawHorizontalLine(x1, x2, y1);
             return;
         }
 
@@ -134,6 +130,58 @@ class Screen {
                     let adyMinusBdx = adyMinusBdx - dx;
                 }
             }
+        }
+        return;
+    }
+
+    function void drawWord(int w, int x, int y) {
+        var int addr;
+
+        let addr = 16384 + (y * 32) + x;
+        do Memory.poke(addr, w);
+        return;
+    }
+
+    function void drawHorizontalLine(int x1, int x2, int y) {
+        var int begin, end, pixelBegin, pixelEnd, j;
+
+
+        let begin = (x1 + 15) / 16;
+        let end = x2 / 16;
+        let pixelBegin = begin * 16;
+        let pixelEnd = end * 16;
+
+        if (pixelBegin > pixelEnd) {
+            let j = x1;
+            while (j < (x2 + 1)) {
+                do Screen.drawPixel(j, y);
+                let j = j + 1;
+            }
+            return;
+        }
+
+
+        let j = x1;
+        while (j < pixelBegin) {
+            do Screen.drawPixel(j, y);
+            let j = j + 1;
+        }
+
+        let j = begin;
+        while (j < end) {
+            if (isBlack) {
+                do Screen.drawWord(~0, j, y);
+            }
+            else {
+                do Screen.drawWord(0, j, y);
+            }
+            let j = j + 1;
+        }
+
+        let j = pixelEnd;
+        while (j < (x2 + 1)) {
+            do Screen.drawPixel(j, y);
+            let j = j + 1;
         }
         return;
     }
